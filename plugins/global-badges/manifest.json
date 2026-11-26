@@ -1,0 +1,11 @@
+{
+  "id": "global-badges",
+  "name": "Global Badges",
+  "description": "Shows community badges from other Discord client mods. Fetches data from badges.equicord.org.",
+  "network_hosts": [
+    "badges.equicord.org"
+  ],
+  "image_hosts": [
+    "*"
+  ]
+}

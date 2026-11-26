@@ -1,0 +1,32 @@
+[package]
+name = "workshop-client"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[features]
+default = ["developer-cli"]
+developer-cli = ["wasmi/wat", "phoenix-sigs/file"]
+
+[[example]]
+name = "settings_probe"
+required-features = ["developer-cli"]
+
+[profile.dist]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = "symbols"
+
+[dependencies]
+anyhow = "1"
+wasmi = { version = "2.0.3", default-features = false, features = ["std", "validate", "stable", "auto-dispatch"] }
+libc = "0.2"
+phoenix-hook = { git = "https://github.com/sunbird-tools/sunbird", rev = "8559cbeeea56a430605217b065a7f020ff72fe4b" }
+phoenix-sigs = { git = "https://github.com/sunbird-tools/sunbird", rev = "8559cbeeea56a430605217b065a7f020ff72fe4b" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

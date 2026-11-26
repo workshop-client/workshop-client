@@ -1,0 +1,6 @@
+{
+  "id": "clear-urls",
+  "name": "Clear URLs",
+  "description": "Removes tracking parameters from links you send and receive.",
+  "network_hosts": []
+}

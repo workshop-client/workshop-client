@@ -1,0 +1,9 @@
+target/
+/.local/
+*.AppImage
+*.appimage
+*.log
+.env
+.env.*
+core
+core.*
