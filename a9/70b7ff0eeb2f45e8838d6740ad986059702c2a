@@ -1,0 +1,85 @@
+.gitignore
+  s_862eb7e0ff1679::t_3ef11fb0ed88aa 1-9
+Cargo.lock
+  s_862eb7e0ff1679::t_9b1d0203b398e5 1-393
+Cargo.toml
+  s_862eb7e0ff1679::t_01b9223c3991e2 1-32
+NOTICE.md
+  s_862eb7e0ff1679::t_6ca76f835125cf 1-9
+README.md
+  s_862eb7e0ff1679::t_e398fb7056e23e 1-80
+docs/phoenix-linux.md
+  s_862eb7e0ff1679::t_05a5c0b307331f 1-45
+docs/plugin-api.md
+  s_862eb7e0ff1679::t_1bc52275a195b7 1-42
+examples/hello/plugin.wat
+  s_862eb7e0ff1679::t_a772a890f2b69f 1-10
+examples/rust-plugin/Cargo.lock
+  s_862eb7e0ff1679::t_f0ddbad0622710 1-7
+examples/rust-plugin/Cargo.toml
+  s_862eb7e0ff1679::t_fa2ba31c7f733e 1-12
+examples/rust-plugin/src/lib.rs
+  s_862eb7e0ff1679::t_09d62d19af59e6 1-14
+examples/settings_probe.rs
+  s_862eb7e0ff1679::t_2dc87106fddd96 1-47
+plugins/clear-urls/README.md
+  s_862eb7e0ff1679::t_28046eb723e9d1 1-14
+plugins/clear-urls/manifest.json
+  s_862eb7e0ff1679::t_13be58b737e19a 1-6
+plugins/clear-urls/plugin.c
+  s_862eb7e0ff1679::t_2a0961fa7148e5 1-48
+plugins/global-badges/Cargo.lock
+  s_862eb7e0ff1679::t_bf23a7bf63a872 1-105
+plugins/global-badges/Cargo.toml
+  s_862eb7e0ff1679::t_6604a5d374a635 1-12
+plugins/global-badges/README.md
+  s_862eb7e0ff1679::t_b38a93db4a23ff 1-22
+plugins/global-badges/manifest.json
+  s_862eb7e0ff1679::t_8e75d9691a0ae5 1-11
+plugins/global-badges/src/lib.rs
+  s_862eb7e0ff1679::t_7252d2116c7cf2 1-386
+scripts/package-linux.sh
+  s_862eb7e0ff1679::t_73411192a8b8bd 1-34
+src/access.rs
+  s_862eb7e0ff1679::t_3284142617c3d5 1-123
+src/lib.rs
+  s_862eb7e0ff1679::t_63409267e01e89 1-306
+src/loader.rs
+  s_862eb7e0ff1679::t_c79466b30b02db 1-143
+src/main.rs
+  s_862eb7e0ff1679::t_142dfdf3816c6c 1-168
+src/messages.rs
+  s_862eb7e0ff1679::t_13f859cc9c1651 1-134
+src/outgoing.rs
+  s_862eb7e0ff1679::t_59da6af60f802e 1-349
+src/plugin_assets.rs
+  s_862eb7e0ff1679::t_946ec3a2deb731 1-381
+src/plugin_events.rs
+  s_862eb7e0ff1679::t_358a2543965df3 1-406
+src/plugin_images.rs
+  s_862eb7e0ff1679::t_1542213cca807f 1-76
+src/plugins.rs
+  s_862eb7e0ff1679::t_76c3b00313f84c 1-122
+src/settings/config.rs
+  s_862eb7e0ff1679::t_c7acce7771bbbf 1-78
+src/settings/mod.rs
+  s_862eb7e0ff1679::t_86d6d987fc2b8d 1-445
+src/settings/widgets.rs
+  s_862eb7e0ff1679::t_15c0b01a587581 1-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a970b7ff0eeb2f45e8838d6740ad986059702c2a",
+  "prompts": {},
+  "sessions": {
+    "s_862eb7e0ff1679": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21909-e489-7ae0-85f2-b465e92078b9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Wolfkid200444 <32025746+Wolfkid200444@users.noreply.github.com>"
+    }
+  }
+}
