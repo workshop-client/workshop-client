@@ -1,0 +1,55 @@
+src/messages.rs
+  s_862eb7e0ff1679::t_855008ee6cf6e6 22
+  s_862eb7e0ff1679::t_96f5688a2b23d8 9,108-127
+docs/plugin-api.md
+  s_862eb7e0ff1679::t_d7a6027db11750 32
+  s_862eb7e0ff1679::t_2cce84f9c9b807 31
+  s_862eb7e0ff1679::t_26fd0537cdad60 20-21,23,36,44
+plugins/clear-urls/Cargo.toml
+  s_862eb7e0ff1679::t_e8c2bc329d25a1 1-10
+plugins/global-badges/src/lib.rs
+  s_862eb7e0ff1679::t_c36f9acb5296f9 298-299
+  s_862eb7e0ff1679::t_ed4c634dc1071f 182,191-194
+  s_862eb7e0ff1679::t_e9463c9699ddec 349,388,473-480,488,493
+  s_862eb7e0ff1679::t_98051b55dd5404 11,18,29-33,48-53,91-95,108,115,128-132,138-141,272,274-276,279-281,292-294,296-297,300,331,346,348,350-352,360,362,376-387,389-433,466,486-487,489-492,494
+src/plugin_assets.rs
+  s_862eb7e0ff1679::t_2cce84f9c9b807 40-58,63-64,80-81,88,191,216-239,242-266,268-279,282,285-288,297,343
+  s_862eb7e0ff1679::t_7e07b648fad6bd 339-342
+src/plugin_context.rs
+  s_862eb7e0ff1679::t_855008ee6cf6e6 1-4,10,17,19,28,38-45,64,73-74
+  s_862eb7e0ff1679::t_bfa257380d0537 5-9,11-16,18,20-27,29-37,46-63,65-72
+src/outgoing.rs
+  s_862eb7e0ff1679::t_855008ee6cf6e6 260-271
+  s_862eb7e0ff1679::t_1fdcc6671f2918 272-279
+src/plugin_network.rs
+  s_862eb7e0ff1679::t_855008ee6cf6e6 1,39,82
+  s_862eb7e0ff1679::t_a1016a4222a49d 2-38,40-81
+src/plugin_events.rs
+  s_862eb7e0ff1679::t_855008ee6cf6e6 125-131,174-194,253,260-290,311-314,328-341,364-366,382,427,430,439
+  s_862eb7e0ff1679::t_ebc989e54cdfac 13-14,422-426,428-429,431-438,440-442
+plugins/clear-urls/src/lib.rs
+  s_862eb7e0ff1679::t_e8c2bc329d25a1 1-153
+  s_862eb7e0ff1679::t_dac84366037057 154-253
+plugins/clear-urls/Cargo.lock
+  s_862eb7e0ff1679::t_2a8222808310a4 1-7
+plugins/clear-urls/README.md
+  s_862eb7e0ff1679::t_964763754eb893 3,5,8-9,13
+src/lib.rs
+  s_862eb7e0ff1679::t_53848c3815c62b 11,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32f038531f739d32547255908c8e3435c731c0a4",
+  "prompts": {},
+  "sessions": {
+    "s_862eb7e0ff1679": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21909-e489-7ae0-85f2-b465e92078b9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Wolfkid200444 <32025746+Wolfkid200444@users.noreply.github.com>"
+    }
+  }
+}
