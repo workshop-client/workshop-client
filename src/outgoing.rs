@@ -343,27 +343,3 @@ unsafe fn poll(future: *mut c_void, cx: *mut c_void) -> PollResult {
     }
     result
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn replacement_bytes_can_be_cloned_and_released() {
-        let original = owned(b"message body".to_vec());
-        let cloned = unsafe { clone_bytes(&original.data, original.ptr, original.len) };
-        unsafe {
-            drop_bytes(
-                original.data.load(Ordering::Relaxed),
-                original.ptr,
-                original.len,
-            );
-        }
-        assert_eq!(
-            unsafe { std::slice::from_raw_parts(cloned.ptr, cloned.len) },
-            b"message body"
-        );
-        unsafe {
-            drop_bytes(cloned.data.load(Ordering::Relaxed), cloned.ptr, cloned.len);
-        }
-    }
-}

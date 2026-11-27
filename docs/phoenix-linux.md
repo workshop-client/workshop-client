@@ -16,7 +16,7 @@ Executable naming matches Sunbird's Linux process check. This establishes a plau
 - [Astral](https://github.com/astral-app/astral), inspected commit `adcbf3d8f81359b84e084f573676cbd445d434ad`.
 - [Wasmi API](https://docs.rs/wasmi/2.0.3/wasmi/), used by this prototype.
 
-Sunbird has a QuickJS plugin runtime and separate desktop native integration. Useful files include `scripts/sunbird-linux.sh`, `crates/loader/src/lib.rs`, `crates/runtime-desktop`, `crates/sigs/src/desktop.rs`, and `crates/hook/src/x86.rs`. Its Linux loader uses LD_PRELOAD, recognizes `discord-phoenix` through `/proc/self/exe`, and removes its preload entry before helpers inherit it. A hook unit test explicitly references the Linux build dated 2026-11-23.
+Sunbird has a QuickJS plugin runtime and separate desktop native integration. Useful files include `scripts/sunbird-linux.sh`, `crates/loader/src/lib.rs`, `crates/runtime-desktop`, `crates/sigs/src/desktop.rs`, and `crates/hook/src/x86.rs`. Its Linux loader uses LD_PRELOAD, recognizes `discord-phoenix` through `/proc/self/exe`, and removes its preload entry before helpers inherit it.
 
 Astral targets iOS and Android and places its Lua implementation under `packages/core/lua`. Its lifecycle and plugin API are useful design references; desktop hooking requires separate work.
 

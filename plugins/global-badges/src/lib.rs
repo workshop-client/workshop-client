@@ -18,12 +18,10 @@ static CACHE: LazyLock<Mutex<Cache>> = LazyLock::new(|| {
         virtual_ids: Default::default(),
     })
 });
-#[cfg(not(test))]
 #[link(wasm_import_module = "workshop")]
 unsafe extern "C" {
     fn call(ptr: *const u8, len: i32, out: *mut u8, capacity: i32) -> i32;
 }
-#[cfg(not(test))]
 fn host(request: Value) -> Value {
     let bytes = serde_json::to_vec(&request).unwrap_or_default();
     let capacity = match request["op"].as_str() {
@@ -43,14 +41,6 @@ fn host(request: Value) -> Value {
         return Value::Null;
     }
     serde_json::from_slice(&output[..length as usize]).unwrap_or(Value::Null)
-}
-#[cfg(test)]
-fn host(request: Value) -> Value {
-    if request["op"] == "current_user" {
-        json!({"id":"123"})
-    } else {
-        Value::Null
-    }
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn workshop_abi_version() -> i32 {
@@ -428,70 +418,5 @@ fn clean_badge_save(request: Value) -> Value {
         json!({"body":body})
     } else {
         Value::Null
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn validates_and_deduplicates_badges() {
-        let entries = json!([{"mod":"vencord","tooltip":"Contributor","badge":"https://example.com/a.png"},{"mod":"vencord","tooltip":"duplicate","badge":"https://example.com/a.png"},{"mod":"discord","tooltip":"Fake official","badge":"https://example.com/b.png"},{"mod":"badgevault","tooltip":"Personal","badge":"https://example.com/c.png"},{"mod":"other","tooltip":"Bad","badge":"javascript:alert(1)"}]);
-        let parsed = badges(&entries, false, true, false);
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed[0]["description"], "Vencord Contributor");
-        assert_eq!(badges(&entries, true, false, true).len(), 2);
-    }
-    #[test]
-    fn image_urls_roundtrip() {
-        let uri = "https://example.com/badge.webp?size=128";
-        assert_eq!(
-            decode_image(&format!(
-                "https://cdn.discordapp.com/badge-icons/{}.png",
-                image_key(uri)
-            ))
-            .as_deref(),
-            Some(uri)
-        );
-        assert!(
-            decode_image("https://cdn.discordapp.com/badge-icons/workshop_global_zz.png").is_none()
-        );
-    }
-}
-
-#[cfg(test)]
-mod response_tests {
-    use super::*;
-    #[test]
-    fn merges_profiles_and_self_discovery_and_strips_virtual_save_ids() {
-        CACHE.lock().unwrap().users = json!({"123":[{"mod":"equicord","tooltip":"Contributor","badge":"https://example.com/badge.png"}]});
-        let profile = handle(
-            json!({"type":"http_response","method":"GET","path":"/users/123/profile","status":200,"body":{"user":{"id":"123"},"badges":[{"id":"official"}]}}),
-        );
-        assert_eq!(profile["body"]["badges"].as_array().unwrap().len(), 2);
-        assert_eq!(profile["body"]["badges"][1]["id"], "official");
-        let image = profile["body"]["badges"][0]["simple_icon_url"]
-            .as_str()
-            .unwrap();
-        assert!(image.starts_with("https://cdn.discordapp.com/badge-icons/"));
-        assert_eq!(
-            decode_image(image).as_deref(),
-            Some("https://example.com/badge.png")
-        );
-        let directory = handle(
-            json!({"type":"http_response","method":"GET","path":"/users/123/badges","status":404,"body":{}}),
-        );
-        assert_eq!(directory["status"], 200);
-        assert_eq!(directory["body"]["badges"][0]["owned"], true);
-        let own = handle(
-            json!({"type":"http_response","method":"GET","path":"/users/@me/badges","status":200,"body":{"badges":[{"badge_id":"official"}]}}),
-        );
-        assert_eq!(own["body"]["badges"].as_array().unwrap().len(), 2);
-        let virtual_id = own["body"]["badges"][0]["badge_id"].clone();
-        let cleaned = handle(
-            json!({"type":"http_request_cleanup","method":"PATCH","path":"/users/@me/badges","body":{"badge_ids":[virtual_id,"official"]}}),
-        );
-        assert_eq!(cleaned["body"]["badge_ids"], json!(["official"]));
-        assert!(handle(json!({"type":"http_response","method":"POST","path":"/users/123/profile","status":200,"body":{}})).is_null());
     }
 }

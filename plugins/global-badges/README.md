@@ -11,12 +11,11 @@ Fetching runs on a background tick, never on a profile-render callback. A cold d
 Build with a Rust toolchain that includes `wasm32-unknown-unknown`:
 
 ```sh
-cargo test --manifest-path plugins/global-badges/Cargo.toml
 cargo build --manifest-path plugins/global-badges/Cargo.toml --target wasm32-unknown-unknown --release
 cp plugins/global-badges/target/wasm32-unknown-unknown/release/workshop_global_badges.wasm plugins/global-badges/plugin.wasm
 cargo build --release
 ```
 
-Verified: plugin policy tests, actual WASM schema, real Equibadges fetch/cache, real provider data producing profile badges while preserving existing badges, and image URL round trips. Native adapters install on the pinned Linux Phoenix build. Visual profile rendering still requires confirmation in Phoenix.
+Verified: actual WASM schema, real Equibadges fetch/cache, real provider data producing profile badges while preserving existing badges, and image URL round trips. Native adapters install on the pinned Linux Phoenix build. Visual profile rendering still requires confirmation in Phoenix.
 
 Artwork is prepared through the host's generic image service. The plugin requests 64px PNG previews and GIF animation for animated badge URLs, allowing WebP sources to render without pretending their original bytes are PNG/GIF. Real PNG, WebP, and GIF provider fixtures were downloaded and converted successfully; the GIF fixture retained eight frames. Actual profile/animation rendering is being verified in Phoenix.

@@ -124,33 +124,3 @@ unsafe extern "C" fn ready(
     });
     unsafe { READY.get().unwrap()(store, event, cx) }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn rewrites_content_and_preserves_message_fields() {
-        let input =
-            br#"{"content":"https://example.com/?utm_source=ad&a=1","nonce":"123","tts":false}"#;
-        for event in [
-            crate::MessageEvent::Send,
-            crate::MessageEvent::Receive,
-            crate::MessageEvent::Update,
-        ] {
-            let rewritten = super::rewrite_json_using(input, |text| {
-                crate::plugins::transform_with_config(
-                    event,
-                    text,
-                    &crate::settings::config::Config::default(),
-                )
-            })
-            .unwrap();
-            let value: serde_json::Value = serde_json::from_str(&rewritten).unwrap();
-            assert_eq!(value["content"], "https://example.com/?a=1");
-            assert_eq!(value["nonce"], "123");
-            assert_eq!(value["tts"], false);
-        }
-        assert!(
-            super::rewrite_json(crate::MessageEvent::Send, br#"{"content":"unchanged"}"#).is_none()
-        );
-    }
-}

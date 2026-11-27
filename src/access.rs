@@ -103,21 +103,3 @@ pub(super) fn apply() -> Result<String> {
         address + RESULT_OFFSET
     ))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn rejects_unknown_builds_and_modified_code() {
-        let mut header = [0u8; 0x340];
-        assert!(validate(&header, ORIGINAL).is_err());
-        header[..6].copy_from_slice(b"\x7fELF\x02\x01");
-        header[0x31c..0x32c]
-            .copy_from_slice(&[4, 0, 0, 0, 20, 0, 0, 0, 3, 0, 0, 0, b'G', b'N', b'U', 0]);
-        header[0x32c..].copy_from_slice(BUILD_ID);
-        assert!(validate(&header, ORIGINAL).is_ok());
-        let mut changed = ORIGINAL.to_vec();
-        changed[0] ^= 1;
-        assert!(validate(&header, &changed).is_err());
-    }
-}

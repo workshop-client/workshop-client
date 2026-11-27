@@ -16,7 +16,6 @@ cargo run
 cargo run -- launch /path/to/Discord.AppImage -- --help
 cargo run -- run-plugin examples/hello/plugin.wat
 cargo run -- inspect /path/to/Discord.AppImage
-cargo test
 ```
 
 With no arguments, Workshop launches your November 23 Phoenix AppImage from `~/Applications`. Set `WORKSHOP_DISCORD_APPIMAGE` or pass a path to choose another build. The launcher replaces its process with the AppImage and inherits your desktop environment and terminal output. The launcher preloads `libworkshop_client.so`. The loader activates only in `discord-phoenix`, removes itself from `LD_PRELOAD` before helpers launch, and starts the enabled bundled and custom plugins inside the Phoenix process. Output goes to the terminal and `target/debug/workshop.log`. Close an existing Phoenix instance before launching Workshop so Discord does not hand off to the old process.

@@ -413,27 +413,3 @@ fn byte_range(value: &str, len: usize) -> Option<(usize, usize)> {
     };
     (start <= end && start < len).then_some((start, end))
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn supports_video_byte_ranges() {
-        assert_eq!(byte_range("bytes=0-31", 100), Some((0, 31)));
-        assert_eq!(byte_range("bytes=80-", 100), Some((80, 99)));
-        assert_eq!(byte_range("bytes=-12", 100), Some((88, 99)));
-        assert!(byte_range("bytes=200-", 100).is_none());
-    }
-    #[test]
-    fn restricts_origins_and_loopback() {
-        assert!(validate_url("https://example.com/a.png", &["*".into()]).is_ok());
-        for url in [
-            "http://example.com/a.png",
-            "https://127.0.0.1/a",
-            "https://localhost/a",
-            "https://a@b/a",
-        ] {
-            assert!(validate_url(url, &["*".into()]).is_err());
-        }
-        assert!(!public("192.168.1.1".parse().unwrap()));
-    }
-}

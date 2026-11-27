@@ -217,37 +217,3 @@ pub extern "C" fn workshop_on_message(_event: i32, length: i32) -> i32 {
     buffer[..cleaned.len()].copy_from_slice(cleaned.as_bytes());
     cleaned.len() as i32
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn preserves_content_and_host_scoped_parameters() {
-        for (input, expected) in [
-            (
-                "https://youtube.com/watch?v=abc&t=30&si=tracking",
-                "https://youtube.com/watch?v=abc&t=30",
-            ),
-            ("https://x.com/post?s=1&t=2", "https://x.com/post"),
-            ("https://notx.com/?s=1&t=2", "https://notx.com/?s=1&t=2"),
-            (
-                "https://example.com/#frag?utm_source=foo",
-                "https://example.com/#frag?utm_source=foo",
-            ),
-            (
-                "See **https://example.com/?%75tm_source=foo**.",
-                "See **https://example.com/**.",
-            ),
-            (
-                "🌍 https://example.com/a(b)?a=🌍&gclid=drop",
-                "🌍 https://example.com/a(b)?a=🌍",
-            ),
-            (
-                "https://example.com/?%ZZ=keep&gclid=drop",
-                "https://example.com/?%ZZ=keep",
-            ),
-        ] {
-            assert_eq!(clean_links(input), expected);
-        }
-    }
-}

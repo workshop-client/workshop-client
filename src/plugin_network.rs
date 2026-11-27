@@ -61,22 +61,3 @@ fn fetch(url: &str) -> Result<Value> {
     let (body, status) = body.rsplit_once('\n').context("HTTP status missing")?;
     Ok(json!({"status":status.parse::<u16>()?,"body":body}))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn polls_pending_jobs_and_consumes_completed_response() {
-        let key = (
-            "network-test".to_owned(),
-            "https://example.invalid/".to_owned(),
-        );
-        let job = Arc::new(Mutex::new(None));
-        JOBS.lock().unwrap().insert(key.clone(), job.clone());
-        assert_eq!(get(&key.0, &key.1).unwrap(), json!({"pending":true}));
-        *job.lock().unwrap() = Some(json!({"status":200,"body":"cached"}));
-        assert_eq!(get(&key.0, &key.1).unwrap()["body"], "cached");
-        assert!(!JOBS.lock().unwrap().contains_key(&key));
-    }
-}

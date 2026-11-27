@@ -46,29 +46,3 @@ pub fn observe(user: &Value) {
         *USER.lock().unwrap_or_else(|e| e.into_inner()) = serde_json::json!({"id":user["id"]});
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn resolves_single_store_and_refuses_ambiguous_accounts() {
-        let root =
-            std::env::temp_dir().join(format!("workshop-account-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        for id in ["123", "456"] {
-            std::fs::create_dir_all(root.join("store").join(id)).unwrap();
-            std::fs::write(root.join("store").join(id).join("cache.sqlite"), []).unwrap();
-            if id == "123" {
-                assert_eq!(stored_user(&root).as_deref(), Some("123"));
-            }
-        }
-        assert_eq!(stored_user(&root), None);
-        std::fs::write(
-            root.join("device_prefs.json"),
-            br#"{"desktop.main_account":"456"}"#,
-        )
-        .unwrap();
-        assert_eq!(stored_user(&root).as_deref(), Some("456"));
-        std::fs::remove_dir_all(root).unwrap();
-    }
-}

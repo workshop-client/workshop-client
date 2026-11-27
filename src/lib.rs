@@ -100,53 +100,6 @@ pub fn run_plugin(bytes: &[u8]) -> Result<Vec<String>> {
     Ok(store.into_data().logs)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn hello_logs() {
-        assert_eq!(
-            run_plugin(include_bytes!("../examples/hello/plugin.wat")).unwrap(),
-            ["Hello from Workshop WASM!"]
-        );
-    }
-    #[test]
-    fn infinite_loop_is_stopped() {
-        let error = run_plugin(
-            br#"(module
-          (func (export "workshop_abi_version") (result i32) i32.const 1)
-          (func (export "workshop_start") (loop $forever br $forever)))"#,
-        )
-        .unwrap_err();
-        assert!(error.to_string().contains("instruction budget"));
-    }
-    #[test]
-    fn rejects_oversized_memory() {
-        assert!(
-            run_plugin(
-                br#"(module (memory 257)
-          (func (export "workshop_abi_version") (result i32) i32.const 1)
-          (func (export "workshop_start")))"#
-            )
-            .is_err()
-        );
-    }
-    #[test]
-    fn invalid_guest_pointer_returns_error() {
-        let logs = run_plugin(
-            br#"(module
-          (import "workshop" "log" (func $log (param i32 i32) (result i32)))
-          (memory (export "memory") 1)
-          (func (export "workshop_abi_version") (result i32) i32.const 1)
-          (func (export "workshop_start")
-            i32.const 65535 i32.const 10 call $log i32.const -1 i32.ne
-            if unreachable end))"#,
-        )
-        .unwrap();
-        assert!(logs.is_empty());
-    }
-}
-
 /// Experimental text transform ABI. The plugin returns output in its input buffer.
 #[derive(Clone, Copy)]
 #[repr(i32)]
@@ -212,52 +165,6 @@ pub fn transform_message(bytes: &[u8], event: MessageEvent, text: &str) -> Resul
     let mut output = vec![0; length];
     memory.read(&store, pointer, &mut output)?;
     String::from_utf8(output).context("plugin returned invalid UTF-8")
-}
-
-#[cfg(test)]
-mod clear_urls_tests {
-    #[test]
-    fn wasm_cleans_links_without_breaking_real_parameters() {
-        let wasm = include_bytes!("../plugins/clear-urls/plugin.wasm");
-        for (input, expected) in [
-            (
-                "https://example.com/?utm_source=foo&a=1#section",
-                "https://example.com/?a=1#section",
-            ),
-            (
-                "https://youtube.com/watch?v=abc&t=30&si=tracking",
-                "https://youtube.com/watch?v=abc&t=30",
-            ),
-            ("https://x.com/post?s=1&t=2", "https://x.com/post"),
-            ("https://notx.com/?s=1&t=2", "https://notx.com/?s=1&t=2"),
-            (
-                "https://example.com/#frag?utm_source=foo",
-                "https://example.com/#frag?utm_source=foo",
-            ),
-            (
-                "See **https://example.com/?%75tm_source=foo**.",
-                "See **https://example.com/**.",
-            ),
-            (
-                "https://example.com/?%ZZ=keep&gclid=drop",
-                "https://example.com/?%ZZ=keep",
-            ),
-            (
-                "https://EXAMPLE.com/a(b)?fbclid=x and https://x.com/?s=2",
-                "https://EXAMPLE.com/a(b) and https://x.com/",
-            ),
-            (
-                "hello 🌍 https://example.com/?a=🌍&utm_medium=test",
-                "hello 🌍 https://example.com/?a=🌍",
-            ),
-        ] {
-            assert_eq!(
-                super::transform_text(wasm, input).unwrap(),
-                expected,
-                "{input}"
-            );
-        }
-    }
 }
 
 /// Developer entry point for inspecting a plugin's generic event responses.

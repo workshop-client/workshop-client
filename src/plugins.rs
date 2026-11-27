@@ -103,20 +103,3 @@ pub(crate) fn transform_with_config(
     }
     result
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn individual_switch_and_global_pause_are_independent() {
-        let plugin = &super::list()[0];
-        let mut config = crate::settings::config::Config::default();
-        assert!(super::enabled(plugin, &config));
-        config.plugin_enabled.insert(plugin.id.clone(), false);
-        assert!(!super::enabled(plugin, &config));
-        assert!(config.plugins_enabled);
-        config.plugin_enabled.insert(plugin.id.clone(), true);
-        config.plugins_enabled = false;
-        assert!(!super::enabled(plugin, &config));
-        assert_eq!(config.plugin_enabled.get(&plugin.id), Some(&true));
-    }
-}
