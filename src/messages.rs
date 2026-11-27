@@ -6,6 +6,7 @@ use phoenix_sigs::{
 };
 use std::{ffi::c_void, sync::OnceLock};
 static CREATE: OnceLock<GatewayHandler> = OnceLock::new();
+static READY: OnceLock<GatewayHandler> = OnceLock::new();
 static UPDATE: OnceLock<GatewayHandler> = OnceLock::new();
 pub fn install() -> anyhow::Result<()> {
     crate::access::supported_build()?;
@@ -18,6 +19,7 @@ pub fn install() -> anyhow::Result<()> {
     for (name, original, detour) in [
         ("MESSAGE_CREATE", &CREATE, created as *const () as usize),
         ("MESSAGE_UPDATE", &UPDATE, updated as *const () as usize),
+        ("READY", &READY, ready as *const () as usize),
     ] {
         let entry = registry.entry(
             registry
@@ -101,6 +103,26 @@ fn rewrite_json_using(bytes: &[u8], transform: impl FnOnce(&str) -> String) -> O
     }
     message["content"] = cleaned.into();
     serde_json::to_string(&message).ok()
+}
+
+unsafe extern "C" fn ready(
+    store: *mut c_void,
+    event: *const GatewayEvent,
+    cx: *mut c_void,
+) -> HandlerResult {
+    let _ = std::panic::catch_unwind(|| unsafe {
+        let event = &*event;
+        if event.data.len > 8 * 1024 * 1024 {
+            return;
+        }
+        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(std::slice::from_raw_parts(
+            event.data.ptr,
+            event.data.len,
+        )) {
+            crate::plugin_context::observe(&value["user"]);
+        }
+    });
+    unsafe { READY.get().unwrap()(store, event, cx) }
 }
 
 #[cfg(test)]

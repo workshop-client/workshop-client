@@ -257,6 +257,26 @@ unsafe fn send(this: *const c_void, request: *mut c_void) -> Future {
     })
     .ok()
     .flatten();
+    if let Some((method, path)) = &observed {
+        let _ = std::panic::catch_unwind(|| unsafe {
+            if request.is_null() {
+                return;
+            }
+            let body = request.byte_add(host.layout.body).cast::<u64>();
+            if body.read() != 1 {
+                return;
+            }
+            let bytes = &mut *body.add(1).cast::<Bytes>();
+            if bytes.ptr.is_null() || bytes.len > 1024 * 1024 {
+                return;
+            }
+            let raw = std::slice::from_raw_parts(bytes.ptr, bytes.len);
+            if let Some(rewritten) = crate::plugin_events::request_cleanup(method, path, raw) {
+                let old = std::ptr::replace(bytes, owned(rewritten));
+                ((*old.vtable).drop)(old.data.load(Ordering::Relaxed), old.ptr, old.len);
+            }
+        });
+    }
     let future = unsafe { (host.send)(this, request) };
     if let Some(observed) = observed
         && !future.data.is_null()

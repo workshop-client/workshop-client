@@ -8,9 +8,11 @@ mod messages;
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 mod outgoing;
 mod plugin_assets;
+mod plugin_context;
 mod plugin_events;
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 mod plugin_images;
+mod plugin_network;
 mod plugins;
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 mod settings;

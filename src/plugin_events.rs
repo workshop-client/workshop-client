@@ -10,6 +10,8 @@ use wasmi::{
     Caller, Config, Engine, Linker, Memory, Module, Store, StoreLimits, StoreLimitsBuilder,
     TypedFunc,
 };
+type ImageAliases = BTreeMap<(String, String), String>;
+static IMAGE_ALIASES: LazyLock<Mutex<ImageAliases>> = LazyLock::new(|| Mutex::new(BTreeMap::new()));
 const MAX: usize = 8 * 1024 * 1024;
 struct State {
     id: String,
@@ -120,11 +122,13 @@ pub fn dispatch(plugin: &crate::plugins::Plugin, event: Value) -> Result<Value> 
         bail!("event too large");
     }
     vm.store.data_mut().background = event["type"] == "tick";
-    vm.store.set_fuel(if event["type"] == "tick" {
-        5_000_000_000
-    } else {
-        200_000_000
-    })?;
+    vm.store.set_fuel(
+        if event["type"] == "tick" || event["type"] == "initialize" {
+            5_000_000_000
+        } else {
+            200_000_000
+        },
+    )?;
     let buffer = vm.buffer;
     let pointer = usize::try_from(buffer.call(&mut vm.store, ())?)?;
     let memory = vm.memory;
@@ -167,6 +171,27 @@ fn service(state: &State, request: Value) -> Result<Value> {
             request["height"].as_u64().unwrap_or(64).try_into()?,
             &state.image_hosts
         )?)),
+        "image_alias" => {
+            let source = request["source"].as_str().context("alias source missing")?;
+            let target = request["target"].as_str().context("alias target missing")?;
+            if !source.starts_with("https://cdn.discordapp.com/badge-icons/")
+                || source.len() > 8192
+                || !crate::plugin_assets::owns(target)
+            {
+                bail!("invalid prepared image alias");
+            }
+            let mut aliases = IMAGE_ALIASES
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            if aliases.len() >= 4096
+                && !aliases.contains_key(&(state.id.clone(), source.to_owned()))
+            {
+                bail!("image alias limit");
+            }
+            aliases.insert((state.id.clone(), source.to_owned()), target.to_owned());
+            Ok(Value::Null)
+        }
+        "current_user" => Ok(crate::plugin_context::current_user()),
         "time" => Ok(json!(
             SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
         )),
@@ -225,34 +250,44 @@ fn service(state: &State, request: Value) -> Result<Value> {
             if !state.hosts.iter().any(|allowed| allowed == host) {
                 bail!("plugin lacks permission for HTTP host");
             }
-            let output = std::process::Command::new("curl")
-                .args([
-                    "--silent",
-                    "--show-error",
-                    "--proto",
-                    "=https",
-                    "--max-time",
-                    "20",
-                    "--max-filesize",
-                    "8388608",
-                    "--write-out",
-                    "\n%{http_code}",
-                    "--",
-                    url,
-                ])
-                .output()?;
-            if !output.status.success() || output.stdout.len() > MAX {
-                bail!("plugin HTTP request failed");
-            }
-            let body = String::from_utf8(output.stdout)?;
-            let (body, status) = body.rsplit_once('\n').context("HTTP status missing")?;
-            Ok(json!({"status":status.parse::<u16>()?,"body":body}))
+            crate::plugin_network::get(&state.id, url)
         }
         _ => bail!("unknown host operation"),
     }
 }
 pub fn http_response(method: &str, path: &str, status: u16, body: &[u8]) -> Option<(u16, Vec<u8>)> {
     let mut value: Value = serde_json::from_slice(body).ok()?;
+    if method == "GET"
+        && path.split(['?', '#']).next() == Some("/users/@me")
+        && (200..300).contains(&status)
+    {
+        crate::plugin_context::observe(&value);
+    }
+    // Phoenix's account popout is a self-profile request, unlike ordinary
+    // user popouts. It also works when startup restores a cached session.
+    if method == "GET"
+        && (200..300).contains(&status)
+        && path
+            .split_once('?')
+            .is_some_and(|(_, query)| query.split('&').any(|part| part == "type=account_popout"))
+        && path.starts_with("/users/")
+        && path
+            .split('?')
+            .next()
+            .is_some_and(|path| path.ends_with("/profile"))
+    {
+        crate::plugin_context::observe(&value["user"]);
+    }
+    if path.contains("badge") {
+        let keys: Vec<_> = value
+            .as_object()
+            .map(|object| object.keys().map(String::as_str).collect())
+            .unwrap_or_default();
+        eprintln!(
+            "[workshop] badge response: method={method} path={path} status={status} keys={keys:?} identity_known={}",
+            !crate::plugin_context::current_user().is_null()
+        );
+    }
     let mut status = status;
     let mut changed = false;
     let config = crate::settings::config::get();
@@ -273,7 +308,10 @@ pub fn http_response(method: &str, path: &str, status: u16, body: &[u8]) -> Opti
             {
                 status = code as u16;
             }
-            eprintln!("[workshop] plugin {} transformed HTTP response", plugin.id);
+            eprintln!(
+                "[workshop] plugin {} transformed HTTP response path={path}",
+                plugin.id
+            );
             value = result["body"].clone();
             changed = true;
         }
@@ -287,6 +325,20 @@ pub fn http_response(method: &str, path: &str, status: u16, body: &[u8]) -> Opti
 }
 pub fn image(url: &str) -> Option<String> {
     let config = crate::settings::config::get();
+    {
+        let aliases = IMAGE_ALIASES
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        for plugin in crate::plugins::list()
+            .iter()
+            .filter(|plugin| crate::plugins::enabled(plugin, &config))
+        {
+            if let Some(target) = aliases.get(&(plugin.id.clone(), url.to_owned())) {
+                return Some(target.clone());
+            }
+        }
+    }
+
     for plugin in crate::plugins::list()
         .iter()
         .filter(|p| crate::plugins::enabled(p, &config))
@@ -309,6 +361,9 @@ pub fn start() {
     }
     // Initialize metadata before background HTTP work can make a plugin busy.
     let _ = schemas();
+    for plugin in crate::plugins::list() {
+        let _ = dispatch(plugin, json!({"type":"initialize"}));
+    }
     let _ = std::thread::Builder::new()
         .name("workshop-plugin-ticks".into())
         .spawn(|| {
@@ -324,7 +379,7 @@ pub fn start() {
                         eprintln!("[workshop] plugin {} tick: {error:#}", plugin.id);
                     }
                 }
-                std::thread::sleep(std::time::Duration::from_secs(30));
+                std::thread::sleep(std::time::Duration::from_secs(1));
             }
         });
 }
@@ -362,6 +417,27 @@ pub fn schemas() -> &'static [Setting] {
         }
         settings
     })
+}
+
+/// Cleanup runs even after disabling a plugin, so already displayed virtual
+/// items cannot leak synthetic IDs into a later server-side save operation.
+pub fn request_cleanup(method: &str, path: &str, body: &[u8]) -> Option<Vec<u8>> {
+    if method == "GET" || method == "HEAD" {
+        return None;
+    }
+    let mut value: Value = serde_json::from_slice(body).ok()?;
+    let mut changed = false;
+    for plugin in crate::plugins::list() {
+        if let Ok(result) = dispatch(
+            plugin,
+            json!({"type":"http_request_cleanup","method":method,"path":path,"body":value}),
+        ) && (result["body"].is_object() || result["body"].is_array())
+        {
+            value = result["body"].clone();
+            changed = true;
+        }
+    }
+    changed.then(|| serde_json::to_vec(&value).ok()).flatten()
 }
 
 #[cfg(test)]

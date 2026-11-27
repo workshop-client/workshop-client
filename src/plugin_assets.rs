@@ -37,21 +37,32 @@ pub fn start() -> Result<()> {
             assets: Mutex::new(HashMap::new()),
         })
         .map_err(|_| anyhow::anyhow!("asset server already initialized"))?;
+    let (sender, receiver) = std::sync::mpsc::sync_channel::<TcpStream>(128);
+    let receiver = Arc::new(Mutex::new(receiver));
+    for _ in 0..8 {
+        let receiver = receiver.clone();
+        std::thread::Builder::new()
+            .name("workshop-image".into())
+            .spawn(move || {
+                loop {
+                    let stream = receiver
+                        .lock()
+                        .unwrap_or_else(|error| error.into_inner())
+                        .recv();
+                    let Ok(stream) = stream else {
+                        break;
+                    };
+                    let _ = serve(stream);
+                }
+            })?;
+    }
     std::thread::Builder::new()
         .name("workshop-assets".into())
         .spawn(move || {
-            static ACTIVE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
             for stream in listener.incoming().flatten() {
-                if ACTIVE.fetch_add(1, std::sync::atomic::Ordering::AcqRel) >= 8 {
-                    ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
-                    continue;
+                if sender.send(stream).is_err() {
+                    break;
                 }
-                let _ = std::thread::Builder::new()
-                    .name("workshop-image".into())
-                    .spawn(move || {
-                        let _ = serve(stream);
-                        ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
-                    });
             }
         })?;
     Ok(())
@@ -66,15 +77,15 @@ pub fn register(
 ) -> Result<String> {
     validate_url(url, allowed)?;
     if !["png", "gif", "mp4"].contains(&format)
-        || !(1..=128).contains(&width)
-        || !(1..=128).contains(&height)
+        || !(1..=256).contains(&width)
+        || !(1..=256).contains(&height)
     {
         bail!("unsupported image conversion");
     }
     let server = SERVER.get().context("image service unavailable")?;
     use std::hash::{Hash, Hasher};
     let mut hash = std::collections::hash_map::DefaultHasher::new();
-    (id, url, format, width, height).hash(&mut hash);
+    (3u8, id, url, format, width, height).hash(&mut hash);
     let key = format!("{:016x}.{format}", hash.finish());
     let base = std::env::var_os("XDG_CACHE_HOME")
         .map(PathBuf::from)
@@ -177,6 +188,7 @@ fn convert(asset: &Asset) -> Result<Vec<u8>> {
     let output = asset
         .path
         .with_extension(format!("{}.tmp.{}", std::process::id(), asset.format));
+    let animation_input = input.with_extension("frames.gif");
     let result = (|| -> Result<Vec<u8>> {
         let status = std::process::Command::new("curl")
             .args([
@@ -201,39 +213,79 @@ fn convert(asset: &Asset) -> Result<Vec<u8>> {
             bail!("image download failed");
         }
         let conversion = if asset.format == "mp4" {
-            std::process::Command::new("timeout").args(["15","ffmpeg","-v","error","-nostdin","-threads","1","-filter_threads","1","-i"]).arg(&input)
+            // FFmpeg cannot reliably decode animated WebP. ImageMagick expands
+            // its frames first and preserves their delays in an intermediate GIF.
+            let frames = std::process::Command::new("timeout")
+                .args([
+                    "15", "magick", "-limit", "memory", "64MiB", "-limit", "disk", "64MiB",
+                    "-limit", "area", "4MP",
+                ])
+                .arg(format!("{}[0-119]", input.display()))
+                .args([
+                    "-coalesce",
+                    "-resize",
+                    &format!("{}x{}>", asset.width, asset.height),
+                    "-layers",
+                    "Optimize",
+                ])
+                .arg(&animation_input)
+                .output()?;
+            if !frames.status.success() {
+                bail!(
+                    "animation frame conversion failed: {}",
+                    String::from_utf8_lossy(&frames.stderr)
+                );
+            }
+            std::process::Command::new("timeout").args(["15","ffmpeg","-v","error","-nostdin","-threads","1","-filter_threads","1","-i"]).arg(&animation_input)
                 .args(["-an","-vf",&format!("scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=0x202024,format=yuv420p",asset.width,asset.height,asset.width,asset.height),"-t","12","-frames:v","120","-c:v","libx264","-preset","veryfast","-movflags","+faststart","-y"]).arg(&output).output()?
         } else {
-            let source = format!(
-                "{}{}",
-                input.display(),
-                if asset.format == "gif" {
-                    "[0-119]"
-                } else {
-                    "[0]"
+            let mut result = None;
+            // Keep animations when possible, reducing output resolution before
+            // falling back to one frame. Source decoding has its own limits.
+            let attempts = if asset.format == "gif" {
+                vec![(asset.width.min(128), true), (64, true), (64, false)]
+            } else {
+                vec![(asset.width, false)]
+            };
+            for (width, animated) in attempts {
+                let height = (asset.height * width / asset.width).max(1);
+                let source = format!(
+                    "{}{}",
+                    input.display(),
+                    if animated { "[0-119]" } else { "[0]" }
+                );
+                let mut command = std::process::Command::new("timeout");
+                command.args([
+                    "15", "magick", "-limit", "memory", "64MiB", "-limit", "disk", "256MiB",
+                    "-limit", "area", "4MP",
+                ]);
+                command.arg(source);
+                if animated {
+                    command.arg("-coalesce");
                 }
-            );
-            let mut command = std::process::Command::new("timeout");
-            command.args([
-                "15", "magick", "-limit", "memory", "64MiB", "-limit", "disk", "64MiB", "-limit",
-                "area", "4MP",
-            ]);
-            command.arg(source);
-            if asset.format == "gif" {
-                command.arg("-coalesce");
+                command.args(["-resize", &format!("{width}x{height}"), "-strip"]);
+                if asset.format == "gif" {
+                    command.args(["-colors", "128", "-layers", "Optimize"]);
+                }
+                let conversion = command.arg(&output).output()?;
+                let fits = conversion.status.success()
+                    && std::fs::metadata(&output)
+                        .is_ok_and(|metadata| metadata.len() > 0 && metadata.len() <= 1024 * 1024);
+                result = Some(conversion);
+                if fits {
+                    if asset.format == "gif" && !animated {
+                        eprintln!("[workshop] oversized animation used still-frame fallback");
+                    }
+                    break;
+                }
             }
-            command.args([
-                "-resize",
-                &format!("{}x{}", asset.width, asset.height),
-                "-strip",
-            ]);
-            if asset.format == "gif" {
-                command.args(["-layers", "Optimize"]);
-            }
-            command.arg(&output).output()?
+            result.context("image conversion attempt missing")?
         };
         if !conversion.status.success() {
-            bail!("image conversion failed");
+            bail!(
+                "image conversion failed: {}",
+                String::from_utf8_lossy(&conversion.stderr)
+            );
         }
         let bytes = std::fs::read(&output)?;
         if bytes.is_empty() || bytes.len() > 1024 * 1024 {
@@ -242,6 +294,7 @@ fn convert(asset: &Asset) -> Result<Vec<u8>> {
         std::fs::rename(&output, &asset.path)?;
         Ok(bytes)
     })();
+    let _ = std::fs::remove_file(animation_input);
     let _ = std::fs::remove_file(input);
     let _ = std::fs::remove_file(output);
     result
@@ -283,6 +336,11 @@ fn serve(mut stream: TcpStream) -> Result<()> {
     if let Some(asset) = asset {
         match convert(&asset) {
             Ok(body) => {
+                eprintln!(
+                    "[workshop] prepared image served: format={} bytes={}",
+                    asset.format,
+                    body.len()
+                );
                 let range = request.lines().skip(1).find_map(|line| {
                     line.split_once(':')
                         .filter(|(key, _)| key.eq_ignore_ascii_case("range"))
