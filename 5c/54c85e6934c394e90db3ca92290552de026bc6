@@ -1,0 +1,23 @@
+docs/phoenix-linux.md
+  s_862eb7e0ff1679::t_c666685accb281 19
+plugins/clear-urls/README.md
+  s_862eb7e0ff1679::t_2d4856ff15756a 10
+plugins/global-badges/README.md
+  s_862eb7e0ff1679::t_eb5694c7510778 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c54c85e6934c394e90db3ca92290552de026bc6",
+  "prompts": {},
+  "sessions": {
+    "s_862eb7e0ff1679": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21909-e489-7ae0-85f2-b465e92078b9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Wolfkid200444 <32025746+Wolfkid200444@users.noreply.github.com>"
+    }
+  }
+}
